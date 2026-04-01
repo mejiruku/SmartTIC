@@ -1,4 +1,4 @@
-const CACHE_NAME = '1.2.2'; // バージョン管理
+const CACHE_NAME = '1.2.3'; // バージョン管理
 const urlsToCache = [
     './',              // index.html
     './index.html',
@@ -9,29 +9,29 @@ const urlsToCache = [
 ];
 
 // インストール時にキャッシュする
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function (event) {
     event.waitUntil(
         caches.open(CACHE_NAME)
-        .then(function(cache) {
-            console.log('Opened cache');
-            return cache.addAll(urlsToCache).catch(err => {
-                console.error('キャッシュの登録に失敗しました。ファイル名やパスを確認してください:', err);
-            });
-        })
+            .then(function (cache) {
+                console.log('Opened cache');
+                return cache.addAll(urlsToCache).catch(err => {
+                    console.error('キャッシュの登録に失敗しました。ファイル名やパスを確認してください:', err);
+                });
+            })
     );
     // 新しいService Workerをすぐにアクティブにする
     self.skipWaiting();
 });
 
 // アクティベート時に古いキャッシュを削除
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function (event) {
     event.waitUntil(
-        caches.keys().then(function(cacheNames) {
+        caches.keys().then(function (cacheNames) {
             return Promise.all(
-                cacheNames.filter(function(cacheName) {
+                cacheNames.filter(function (cacheName) {
                     // 現在のキャッシュ名以外を削除対象にする
                     return cacheName !== CACHE_NAME;
-                }).map(function(cacheName) {
+                }).map(function (cacheName) {
                     console.log('古いキャッシュを削除:', cacheName);
                     return caches.delete(cacheName);
                 })
@@ -43,7 +43,7 @@ self.addEventListener('activate', function(event) {
 });
 
 // Stale-While-Revalidate戦略でフェッチ
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch', function (event) {
     // Firebase等の外部APIリクエストはキャッシュしない
     if (event.request.url.includes('firebaseio.com') ||
         event.request.url.includes('googleapis.com') ||
@@ -52,16 +52,16 @@ self.addEventListener('fetch', function(event) {
     }
 
     event.respondWith(
-        caches.open(CACHE_NAME).then(function(cache) {
-            return cache.match(event.request, { ignoreSearch: true }).then(function(cachedResponse) {
+        caches.open(CACHE_NAME).then(function (cache) {
+            return cache.match(event.request, { ignoreSearch: true }).then(function (cachedResponse) {
                 // ネットワークから最新版を取得（バックグラウンド）
-                const fetchPromise = fetch(event.request).then(function(networkResponse) {
+                const fetchPromise = fetch(event.request).then(function (networkResponse) {
                     // 成功したレスポンスのみキャッシュを更新
                     if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
                         cache.put(event.request, networkResponse.clone());
                     }
                     return networkResponse;
-                }).catch(function(error) {
+                }).catch(function (error) {
                     console.log('ネットワークエラー:', error);
                     // ネットワークエラー時はキャッシュを返す（下で処理）
                     return cachedResponse;
